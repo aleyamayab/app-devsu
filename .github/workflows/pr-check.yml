@@ -98,7 +98,9 @@ jobs:
             const fs = require('fs');
             const coveragePath = '${{ env.APP_DIR }}/coverage.xml';
             
-            let coverageComment = '## Code Coverage Report\n\n';
+            // Unique marker to identify our comment
+            const marker = '<!-- pr-check-coverage-comment -->';
+            let coverageComment = marker + '\n## Code Coverage Report\n\n';
             
             if (fs.existsSync(coveragePath)) {
               coverageComment += 'Coverage report generated successfully.\n\n';
@@ -107,12 +109,33 @@ jobs:
               coverageComment += 'Coverage report not found.';
             }
             
-            github.rest.issues.createComment({
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: coverageComment
             });
+            
+            const existingComment = comments.find(comment => 
+              comment.body.includes(marker)
+            );
+            
+            // Update existing comment or create new one
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                comment_id: existingComment.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: coverageComment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: coverageComment
+              });
+            }
 
       - name: Summary
         if: always()
