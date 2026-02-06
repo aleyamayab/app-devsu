@@ -2,7 +2,7 @@ name: PR Check - Lint, Test & Coverage
 
 on:
   pull_request:
-    branches: [main]
+    branches: [develop]
 
 permissions:
   contents: read
