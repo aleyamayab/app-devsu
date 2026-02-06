@@ -88,6 +88,7 @@ jobs:
           name: pr-coverage-${{ github.event.pull_request.number }}
           path: ${{ env.APP_DIR }}/coverage.xml
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Comment PR with coverage
         if: always()
