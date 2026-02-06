@@ -47,10 +47,21 @@ jobs:
       # 2) Static Code Analysis
       - name: Lint with flake8
         run: |
-          echo "Checking for critical syntax errors..."
-          flake8 ${{ env.APP_DIR }} --count --select=E9,F63,F7,F82 --show-source --statistics
-          echo "Running extended linting (non-breaking)..."
-          flake8 ${{ env.APP_DIR }} --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
+          echo "Checking for critical syntax errors"
+          flake8 ${{ env.APP_DIR }} \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics \
+            --exclude=.venv,venv,__pycache__,migrations,*.pyc,.git,build,dist,*.egg-info
+          echo "Running extended linting (non-breaking)."
+          flake8 ${{ env.APP_DIR }} \
+            --count \
+            --exit-zero \
+            --max-complexity=10 \
+            --max-line-length=120 \
+            --statistics \
+            --exclude=.venv,venv,__pycache__,migrations,*.pyc,.git,build,dist,*.egg-info
 
       # 3) Migrations + 4) Unit Tests + 5) Coverage
       - name: Run migrations
