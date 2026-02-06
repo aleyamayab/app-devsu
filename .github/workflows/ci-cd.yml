@@ -3,7 +3,7 @@ name: CI/CD - Build, Test & Deploy
 on:
   workflow_dispatch:
   push:
-    branches: [develop, main]
+    branches: [main]
 
 permissions:
   contents: read
