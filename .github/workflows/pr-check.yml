@@ -1,4 +1,4 @@
-name: PR Check - Lint, Test & Coverage
+name: PR Check CI
 
 on:
   pull_request:
