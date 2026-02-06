@@ -1,4 +1,4 @@
-name: CI/CD - Build, Test & Deploy
+name: CI Build.
 
 on:
   workflow_dispatch:
