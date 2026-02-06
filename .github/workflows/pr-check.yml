@@ -42,6 +42,7 @@ jobs:
           pip install flake8 coverage
 
       - name: Lint with flake8
+        id: lint
         run: |
           echo "Checking for critical syntax errors..."
           flake8 ${{ env.APP_DIR }} \
@@ -71,6 +72,7 @@ jobs:
           python manage.py migrate --noinput
 
       - name: Run tests with coverage
+        id: tests
         working-directory: ${{ env.APP_DIR }}
         env:
           DJANGO_SECRET_KEY: "ci-secret-key-${{ github.run_id }}"
@@ -83,6 +85,7 @@ jobs:
           coverage xml --omit="*/migrations/*,*/tests.py"
 
       - name: Upload coverage report
+        id: coverage
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -119,8 +122,33 @@ jobs:
         run: |
           echo "### PR Validation Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Linting: Passed" >> $GITHUB_STEP_SUMMARY
-          echo "- Tests: Passed" >> $GITHUB_STEP_SUMMARY
-          echo "- Coverage: Generated" >> $GITHUB_STEP_SUMMARY
+          
+          # Linting status
+          if [ "${{ steps.lint.outcome }}" == "success" ]; then
+            echo "- Linting: ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Linting: ❌ Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Tests status
+          if [ "${{ steps.tests.outcome }}" == "success" ]; then
+            echo "- Tests: ✅ Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Tests: ❌ Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Coverage status
+          if [ "${{ steps.coverage.outcome }}" == "success" ]; then
+            echo "- Coverage: ✅ Generated" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Coverage: ❌ Not Generated" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "This PR is ready for review!" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall status
+          if [ "${{ steps.lint.outcome }}" == "success" ] && [ "${{ steps.tests.outcome }}" == "success" ]; then
+            echo "This PR is ready for review!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "This PR has validation issues that need to be addressed." >> $GITHUB_STEP_SUMMARY
+          fi
