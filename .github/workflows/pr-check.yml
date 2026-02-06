@@ -98,7 +98,7 @@ jobs:
             const fs = require('fs');
             const coveragePath = '${{ env.APP_DIR }}/coverage.xml';
             
-            let coverageComment = '##Code Coverage Report\n\n';
+            let coverageComment = '## Code Coverage Report\n\n';
             
             if (fs.existsSync(coveragePath)) {
               coverageComment += 'Coverage report generated successfully.\n\n';
