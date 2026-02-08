@@ -1,4 +1,4 @@
-name: CI Build.
+name: CI Build
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches: [develop]
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 env:
@@ -15,9 +15,40 @@ env:
   APP_DIR: devsu-demo-devops-python/devsu-demo-devops-python
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    name: Generate Semantic Version
+    outputs:
+      new_version: ${{ steps.semantic.outputs.new_release_version }}
+      new_release_published: ${{ steps.semantic.outputs.new_release_published }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          dry_run: false
+          branches: |
+            [
+              'main',
+              'develop'
+            ]
+          extra_plugins: |
+            @semantic-release/git
+            @semantic-release/changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-and-deploy:
     runs-on: ubuntu-latest
     name: Build, Test & Push Image
+    needs: version
+    if: needs.version.outputs.new_release_published == 'true'
 
     steps:
       - name: Checkout code
@@ -108,9 +139,10 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.new_version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.new_version }}
+            type=raw,value=develop-{{sha}}
+            type=raw,value=latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -126,6 +158,8 @@ jobs:
       - name: Image information
         run: |
           echo "### Docker Image Built Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** v${{ needs.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Repository:** ${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
