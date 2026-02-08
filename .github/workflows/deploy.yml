@@ -12,6 +12,10 @@ on:
           - dev
           - qa
           - production
+      image_tag:
+        description: 'Image tag to promote (from develop build)'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -33,14 +37,6 @@ jobs:
         with:
           ref: main
 
-      - name: Get latest version
-        id: version
-        run: |
-          # Obtiene el último tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
-          echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
-          echo "Latest version: ${LATEST_TAG}"
-
       - name: Set deployment configuration
         id: config
         run: |
@@ -49,19 +45,57 @@ jobs:
             dev)
               echo "namespace=dev" >> $GITHUB_OUTPUT
               echo "replicas=2" >> $GITHUB_OUTPUT
-              echo "image_tag=v${{ steps.version.outputs.version }}-dev" >> $GITHUB_OUTPUT
+              echo "image_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+              echo "promotion_gate=none" >> $GITHUB_OUTPUT
               ;;
             qa)
               echo "namespace=qa" >> $GITHUB_OUTPUT
               echo "replicas=3" >> $GITHUB_OUTPUT
-              echo "image_tag=v${{ steps.version.outputs.version }}-qa" >> $GITHUB_OUTPUT
+              echo "image_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+              echo "promotion_gate=dev" >> $GITHUB_OUTPUT
               ;;
             production)
               echo "namespace=production" >> $GITHUB_OUTPUT
               echo "replicas=4" >> $GITHUB_OUTPUT
-              echo "image_tag=v${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
+              echo "image_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+              echo "promotion_gate=qa" >> $GITHUB_OUTPUT
               ;;
           esac
+
+      - name: Check promotion gate
+        if: ${{ steps.config.outputs.promotion_gate != 'none' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REQUIRED_ENV="${{ steps.config.outputs.promotion_gate }}"
+          TAG="${{ steps.config.outputs.image_tag }}"
+          REQUIRED_ARTIFACT="promoted-${REQUIRED_ENV}-${TAG}"
+          export REQUIRED_ARTIFACT
+
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.request
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ["GITHUB_TOKEN"]
+          required = os.environ["REQUIRED_ARTIFACT"]
+          url = f"https://api.github.com/repos/{repo}/actions/artifacts?per_page=100"
+
+          req = urllib.request.Request(url)
+          req.add_header("Authorization", f"Bearer {token}")
+          req.add_header("Accept", "application/vnd.github+json")
+
+          with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+          names = {a["name"] for a in data.get("artifacts", [])}
+          if required not in names:
+            print(f"Missing promotion artifact: {required}")
+            sys.exit(1)
+          print(f"Promotion gate passed: {required}")
+          PY
 
       - name: Setup Minikube (for local testing)
         uses: hiberbee/github-action-minikube@minikube-latest
@@ -103,12 +137,19 @@ jobs:
           echo "Service info:"
           kubectl get svc -n ${{ steps.config.outputs.namespace }}
 
+      - name: Record promotion artifact
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: promoted-${{ github.event.inputs.environment }}-${{ steps.config.outputs.image_tag }}
+          path: k8s/base/deployment.yml
+          retention-days: 30
+
       - name: Create deployment summary
         if: always()
         run: |
           echo "### Deployment to ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Image Tag:** ${{ steps.config.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "**Namespace:** ${{ steps.config.outputs.namespace }}" >> $GITHUB_STEP_SUMMARY
           echo "**Replicas:** ${{ steps.config.outputs.replicas }}" >> $GITHUB_STEP_SUMMARY
