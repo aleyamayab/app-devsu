@@ -13,17 +13,36 @@ spec:
       labels:
         app: devsu-app
     spec:
-      containers:
-        - name: devsu-app
+      initContainers:
+        - name: migrate
           image: ghcr.io/aleyamayab/devsu-demo-devops-python:develop-202602090843
           imagePullPolicy: Always
-
           command:
             - sh
             - -c
             - |
               echo "Running migrations on PostgreSQL..." &&
-              python manage.py migrate --noinput &&
+              python manage.py migrate --noinput
+          envFrom:
+            - configMapRef:
+                name: devsu-app-config
+            - secretRef:
+                name: devsu-app-secret
+            - secretRef:
+                name: postgres-secret
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+      containers:
+        - name: devsu-app
+          image: ghcr.io/aleyamayab/devsu-demo-devops-python:develop-202602090843
+          imagePullPolicy: Always
+
+          args:
+            - sh
+            - -c
+            - |
               echo "Starting Django..." &&
               python manage.py runserver 0.0.0.0:8000
 

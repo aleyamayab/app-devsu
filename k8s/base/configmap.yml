@@ -6,4 +6,3 @@ metadata:
 data:
   DJANGO_DEBUG: "true"
   DJANGO_ALLOWED_HOSTS: "*"
-  DATABASE_NAME: "/data/db.sqlite3"
