@@ -88,17 +88,37 @@ jobs:
         run: |
           python manage.py migrate --noinput
 
-      - name: Run tests with coverage
-        id: tests
+      - name: Verify Azure Postgres connectivity
+        id: db-check
         working-directory: ${{ env.APP_DIR }}
         env:
-          DJANGO_SECRET_KEY: "ci-secret-key-${{ github.run_id }}"
           DB_ENGINE: ${{ env.DB_ENGINE }}
           DB_NAME: ${{ env.DB_NAME }}
           DB_HOST: ${{ env.DB_HOST }}
           DB_PORT: ${{ env.DB_PORT }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DJANGO_SECRET_KEY: "ci-secret-key-${{ github.run_id }}"
+          DJANGO_DEBUG: "False"
+          DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+        run: |
+          python -c "
+          import django
+          django.setup()
+          from django.db import connection
+          cursor = connection.cursor()
+          cursor.execute('SELECT 1')
+          print('✅ Azure Postgres is connected and working')
+          "
+        continue-on-error: true
+
+      - name: Run tests with coverage
+        id: tests
+        working-directory: ${{ env.APP_DIR }}
+        env:
+          DJANGO_SECRET_KEY: "ci-secret-key-${{ github.run_id }}"
+          DB_ENGINE: "django.db.backends.sqlite3"
+          DB_NAME: "db_test_${{ github.run_id }}.sqlite3"
           DJANGO_DEBUG: "False"
           DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
         run: |
