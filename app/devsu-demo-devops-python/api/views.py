@@ -3,11 +3,22 @@ from rest_framework.response import Response
 from .serializers import UserSerializer
 from .models import User
 from rest_framework.decorators import api_view
+from datetime import datetime
 
 
 class UserViewSet(viewsets.ModelViewSet):
+    """
+    User List - Desarrollo
+    
+    API para gestionar usuarios en el ambiente de desarrollo.
+    """
     serializer_class = UserSerializer
     queryset = User.objects.all()
+
+    def get_view_name(self):
+        """Personalizar el nombre que aparece en la página HTML de DRF"""
+        fecha_actual = datetime.now().strftime("%Y-%m-%d")
+        return f"User List - Desarrollo - {fecha_actual}"
 
     def list(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_queryset(), many=True)
