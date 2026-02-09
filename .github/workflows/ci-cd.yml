@@ -62,7 +62,13 @@ jobs:
               { "name": "qa", "prerelease": "rc" },
               { "name": "develop", "prerelease": "beta" }
             ]
-          dry_run: false
+          extra_plugins: |
+            conventional-changelog-conventionalcommits
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+            @semantic-release/changelog
+            @semantic-release/git
+            @semantic-release/github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
