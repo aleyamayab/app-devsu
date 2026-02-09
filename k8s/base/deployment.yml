@@ -15,64 +15,75 @@ spec:
     spec:
       initContainers:
         - name: migrate
-          image: ghcr.io/aleyamayab/devsu-demo-devops-python:v1.2.0
+          image: ghcr.io/aleyamayab/devsu-demo-devops-python:develop-202602090843
           imagePullPolicy: Always
+          command:
+            - sh
+            - -c
+            - |
+              echo "Running migrations on PostgreSQL..." &&
+              python manage.py migrate --noinput
           envFrom:
             - configMapRef:
                 name: devsu-app-config
             - secretRef:
                 name: devsu-app-secret
-          volumeMounts:
-            - name: db-storage
-              mountPath: /data
-          command: ["sh","-c","python manage.py migrate --noinput"]
-
-      containers:
-        - name: devsu-app
-          image: ghcr.io/aleyamayab/devsu-demo-devops-python:v1.2.0
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 8000
-          
+            - secretRef:
+                name: postgres-secret
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
+      containers:
+        - name: devsu-app
+          image: ghcr.io/aleyamayab/devsu-demo-devops-python:develop-202602090843
+          imagePullPolicy: Always
+
+          args:
+            - sh
+            - -c
+            - |
+              echo "Starting Django..." &&
+              python manage.py runserver 0.0.0.0:8000
+
+          ports:
+            - containerPort: 8000
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+
           envFrom:
             - configMapRef:
                 name: devsu-app-config
             - secretRef:
                 name: devsu-app-secret
-          
-          volumeMounts:
-            - name: db-storage
-              mountPath: /data
+            - secretRef:
+                name: postgres-secret
 
           readinessProbe:
             httpGet:
               path: /api/health/
               port: 8000
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 2
+            initialDelaySeconds: 40
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 5
 
           livenessProbe:
             httpGet:
               path: /api/health/
               port: 8000
-            initialDelaySeconds: 10
+            initialDelaySeconds: 60
             periodSeconds: 20
-            timeoutSeconds: 2
+            timeoutSeconds: 3
+            failureThreshold: 5
 
           resources:
             requests:
-              cpu: "50m"
+              cpu: "150m"
               memory: "128Mi"
             limits:
               cpu: "250m"
-              memory: "256Mi"      
-      volumes:
-        - name: db-storage
-          persistentVolumeClaim:
-            claimName: devsu-db-pvc
+              memory: "256Mi"

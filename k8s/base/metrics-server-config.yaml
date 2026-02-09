@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+ name: metrics-server-config
+ namespace: kube-system
+data:
+ NannyConfiguration: |-
+   apiVersion: nannyconfig/v1alpha1
+   kind: NannyConfiguration
+   baseCPU: 100m
+   cpuPerNode: 1m
+   baseMemory: 100Mi
+   memoryPerNode: 8Mi
