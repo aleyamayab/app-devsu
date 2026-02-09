@@ -83,7 +83,7 @@ jobs:
           docker push $IMAGE_NAME:${{ steps.semantic.outputs.new_release_version }}
 
       # -------------------------------------------------
-      # 6. Update Kubernetes DEV manifest
+      # 6. Update Kubernetes manifest for DEV
       # -------------------------------------------------
       - name: Update DEV deployment manifest
         if: steps.semantic.outputs.new_release_published == 'true'
