@@ -11,7 +11,7 @@ permissions:
 
 env:
   PYTHON_VERSION: "3.11"
-  APP_DIR: devsu-demo-devops-python/devsu-demo-devops-python
+  APP_DIR: app/devsu-demo-devops-python
   DB_ENGINE: "django.db.backends.postgresql"
   DB_NAME: "devsudb"
   DB_HOST: "aksdb.postgres.database.azure.com"
