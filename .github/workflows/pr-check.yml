@@ -12,6 +12,10 @@ permissions:
 env:
   PYTHON_VERSION: "3.11"
   APP_DIR: devsu-demo-devops-python/devsu-demo-devops-python
+  DB_ENGINE: "django.db.backends.postgresql"
+  DB_NAME: "devsudb"
+  DB_HOST: "aksdb.postgres.database.azure.com"
+  DB_PORT: "5432"
 
 jobs:
   validate:
@@ -41,6 +45,14 @@ jobs:
           pip install -r ${{ env.APP_DIR }}/requirements.txt
           pip install flake8 coverage
 
+      - name: Get runner IP and open Azure Postgres firewall
+        id: firewall
+        run: |
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          echo "Runner IP: $RUNNER_IP"
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
       - name: Lint with flake8
         id: lint
         run: |
@@ -65,7 +77,12 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
         env:
           DJANGO_SECRET_KEY: "ci-secret-key-${{ github.run_id }}"
-          DATABASE_NAME: "db_test.sqlite3"
+          DB_ENGINE: ${{ env.DB_ENGINE }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_PORT: ${{ env.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DJANGO_DEBUG: "False"
           DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
         run: |
@@ -76,7 +93,12 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
         env:
           DJANGO_SECRET_KEY: "ci-secret-key-${{ github.run_id }}"
-          DATABASE_NAME: "db_test.sqlite3"
+          DB_ENGINE: ${{ env.DB_ENGINE }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_PORT: ${{ env.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DJANGO_DEBUG: "False"
           DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
         run: |
