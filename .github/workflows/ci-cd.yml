@@ -1,12 +1,12 @@
-name: CI Build & Deploy
+name: CI Build & Deploy DEV (GitOps)
 
 on:
   push:
     branches: [develop]
 
 permissions:
-  packages: write
   contents: write
+  packages: write
 
 env:
   REGISTRY: ghcr.io
@@ -16,11 +16,11 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    name: Build & Deploy DEV (beta)
+    name: Build always, Release on semantic version
 
     steps:
       # ----------------------------
-      # 1. Checkout (fetch full history for semantic-release)
+      # 1. Checkout full history
       # ----------------------------
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,29 +28,15 @@ jobs:
           fetch-depth: 0
 
       # ----------------------------
-      # 2. Setup Node.js (semantic-release)
+      # 2. Build ALWAYS (validation build)
       # ----------------------------
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      # ----------------------------
-      # 3. Install semantic-release dependencies
-      # ----------------------------
-      - name: Install semantic-release dependencies
+      - name: Docker build (validation only)
         run: |
-          npm install -g \
-            semantic-release \
-            conventional-changelog-conventionalcommits \
-            @semantic-release/commit-analyzer \
-            @semantic-release/release-notes-generator \
-            @semantic-release/changelog \
-            @semantic-release/git \
-            @semantic-release/github
+          echo "Running validation build (no push)"
+          docker build ${{ env.APP_DIR }}
 
       # ----------------------------
-      # 4. Run semantic-release
+      # 3. Semantic Release
       # ----------------------------
       - name: Semantic Release
         id: semantic
@@ -73,18 +59,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ----------------------------
-      # 5. Stop if no release was generated
-      # ----------------------------
-      - name: Stop if no new release
-        if: steps.semantic.outputs.new_release_published != 'true'
-        run: |
-          echo "No new release generated. Skipping build."
-          exit 0
-
-      # ----------------------------
-      # 6. Login to GitHub Container Registry
+      # 4. Login to registry (ONLY if release)
       # ----------------------------
       - name: Log in to GitHub Container Registry
+        if: steps.semantic.outputs.new_release_published == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -92,28 +70,31 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # ----------------------------
-      # 7. Build and push Docker image (beta)
+      # 5. Build & push RELEASE image (beta)
       # ----------------------------
       - name: Build and push DEV image
+        if: steps.semantic.outputs.new_release_published == 'true'
         run: |
-          echo "Building image: $IMAGE_NAME:${{ steps.semantic.outputs.new_release_version }}"
+          echo "Building RELEASE image: $IMAGE_NAME:${{ steps.semantic.outputs.new_release_version }}"
           docker build \
             -t $IMAGE_NAME:${{ steps.semantic.outputs.new_release_version }} \
             ${{ env.APP_DIR }}
           docker push $IMAGE_NAME:${{ steps.semantic.outputs.new_release_version }}
 
       # ----------------------------
-      # 8. Update Kubernetes DEV deployment (GitOps)
+      # 6. Update Kubernetes DEV manifest
       # ----------------------------
       - name: Update DEV deployment manifest
+        if: steps.semantic.outputs.new_release_published == 'true'
         run: |
           sed -i "s|image: .*|image: $IMAGE_NAME:${{ steps.semantic.outputs.new_release_version }}|" \
             k8s/dev/deployment.yml
 
       # ----------------------------
-      # 9. Commit and push manifest change
+      # 7. Commit GitOps change
       # ----------------------------
       - name: Commit DEV deployment update
+        if: steps.semantic.outputs.new_release_published == 'true'
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
