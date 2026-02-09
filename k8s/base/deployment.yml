@@ -47,6 +47,8 @@ spec:
                 name: devsu-app-config
             - secretRef:
                 name: devsu-app-secret
+            - secretRef:
+                name: postgres-secret
 
           readinessProbe:
             httpGet:
