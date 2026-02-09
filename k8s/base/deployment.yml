@@ -22,10 +22,7 @@ spec:
             - sh
             - -c
             - |
-              echo "Preparing SQLite DB..." &&
-              mkdir -p /tmp/db &&
-              export DATABASE_NAME=/tmp/db/db.sqlite3 &&
-              echo "Running migrations..." &&
+              echo "Running migrations on PostgreSQL..." &&
               python manage.py migrate --noinput &&
               echo "Starting Django..." &&
               python manage.py runserver 0.0.0.0:8000
@@ -37,10 +34,6 @@ spec:
             runAsNonRoot: true
             runAsUser: 1000
             allowPrivilegeEscalation: false
-
-          env:
-            - name: DATABASE_NAME
-              value: /tmp/db/db.sqlite3
 
           envFrom:
             - configMapRef:
