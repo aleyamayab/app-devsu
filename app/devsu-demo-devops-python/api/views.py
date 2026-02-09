@@ -10,7 +10,7 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     User List - Ambiente Desarrollo
     
-    API para gestionar usuarios en el ambiente de desarrollo.
+    Esta API es para gestionar usuarios en el ambiente de desarrollo.
     """
     serializer_class = UserSerializer
     queryset = User.objects.all()
