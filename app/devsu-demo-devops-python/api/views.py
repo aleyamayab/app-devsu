@@ -8,7 +8,7 @@ from datetime import datetime
 
 class UserViewSet(viewsets.ModelViewSet):
     """
-    User List - Desarrollo
+    User List - Ambiente Desarrollo
     
     API para gestionar usuarios en el ambiente de desarrollo.
     """
@@ -18,7 +18,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_view_name(self):
         """Personalizar el nombre que aparece en la página HTML de DRF"""
         fecha_actual = datetime.now().strftime("%Y-%m-%d")
-        return f"User List - Desarrollo - {fecha_actual}"
+        return f"User List - Ambiente Desarrollo - {fecha_actual}"
 
     def list(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_queryset(), many=True)
