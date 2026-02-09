@@ -8,28 +8,31 @@ from rest_framework.decorators import api_view
 class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
-    
 
-    def list(self, request):
-        serializer = self.get_serializer(self.get_queryset(), many = True)
+    def list(self, request, *args, **kwargs):
+        serializer = self.get_serializer(self.get_queryset(), many=True)
         return Response(serializer.data)
 
-    def retrieve(self, request, pk):
+    def retrieve(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_object())
         return Response(serializer.data)
 
-    def create(self, request):
+    def create(self, request, *args, **kwargs):
         data = request.data
 
-        if self.get_queryset().filter(dni=data.get('dni', '')).exists():
-            return Response({'detail': 'User already exists'}, status=400)
+        if self.get_queryset().filter(dni=data.get('dni')).exists():
+            return Response(
+                {'detail': 'User already exists'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        return Response(serializer.data, status=201)
-    
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
 @api_view(["GET"])
 def health(request):
     return Response({"status": "ok"})
