@@ -17,11 +17,11 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    name: Build always, Release via PR
+    name: Release & GitOps DEV
 
     steps:
       # -------------------------------------------------
-      # 1. Checkout full history (required by semantic-release)
+      # 1. Checkout full history (semantic-release needs it)
       # -------------------------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,15 +29,14 @@ jobs:
           fetch-depth: 0
 
       # -------------------------------------------------
-      # 2. Build ALWAYS (validation build, no push)
+      # 2. Validation build (always)
       # -------------------------------------------------
-      - name: Docker build (validation only)
+      - name: Docker build (validation)
         run: |
-          echo "Running validation build"
           docker build ${{ env.APP_DIR }}
 
       # -------------------------------------------------
-      # 3. Semantic Release (decides if there is a new version)
+      # 3. Semantic Release
       # -------------------------------------------------
       - name: Semantic Release
         id: semantic
@@ -60,9 +59,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # -------------------------------------------------
-      # 4. Login to GHCR (ONLY if release exists)
+      # 4. Login GHCR (ONLY if release exists)
       # -------------------------------------------------
-      - name: Log in to GitHub Container Registry
+      - name: Login to GHCR
         if: steps.semantic.outputs.new_release_published == 'true'
         uses: docker/login-action@v3
         with:
@@ -71,19 +70,19 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # -------------------------------------------------
-      # 5. Build & push RELEASE image (beta)
+      # 5. Build & push DEV image
       # -------------------------------------------------
-      - name: Build and push DEV image
+      - name: Build & push DEV image
         if: steps.semantic.outputs.new_release_published == 'true'
         run: |
-          echo "Building image: $IMAGE_NAME:${{ steps.semantic.outputs.new_release_version }}"
           docker build \
             -t $IMAGE_NAME:${{ steps.semantic.outputs.new_release_version }} \
             ${{ env.APP_DIR }}
+
           docker push $IMAGE_NAME:${{ steps.semantic.outputs.new_release_version }}
 
       # -------------------------------------------------
-      # 6. Update Kubernetes manifest for DEV
+      # 6. Update DEV Kubernetes manifest
       # -------------------------------------------------
       - name: Update DEV deployment manifest
         if: steps.semantic.outputs.new_release_published == 'true'
@@ -92,29 +91,40 @@ jobs:
             k8s/dev/deployment.yml
 
       # -------------------------------------------------
-      # 7. Create Pull Request (GitOps)
+      # 7. Create GitOps PR
       # -------------------------------------------------
-      - name: Create Pull Request for DEV deployment
+      - name: Create GitOps PR for DEV
         if: steps.semantic.outputs.new_release_published == 'true'
-        uses: peter-evans/create-pull-request@v6
         id: cpr
+        uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore(dev): deploy ${{ steps.semantic.outputs.new_release_version }}"
-          branch: ci/deploy-dev-${{ steps.semantic.outputs.new_release_version }}
+          branch: gitops/dev-${{ steps.semantic.outputs.new_release_version }}
           delete-branch: true
           base: develop
           title: "🚀 Deploy ${{ steps.semantic.outputs.new_release_version }} to DEV"
           body: |
-            ## 🚀 Automated Deployment to DEV
+            ## 🚀 Automated DEV Deployment
 
             **Version:** `${{ steps.semantic.outputs.new_release_version }}`
             **Image:** `${{ env.IMAGE_NAME }}:${{ steps.semantic.outputs.new_release_version }}`
 
-            ### Changes
-            - Updated `k8s/dev/deployment.yml` with new image tag
+            Changes:
+            - Updated DEV deployment manifest
 
-            This PR was created automatically by CI.
+            Generated automatically by CI.
           labels: |
+            gitops
             deployment
-            automated
+
+      # -------------------------------------------------
+      # 8. Auto-merge GitOps PR (ADMIN)
+      # -------------------------------------------------
+      - name: Auto-merge GitOps PR
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+          pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
+          merge-method: squash
