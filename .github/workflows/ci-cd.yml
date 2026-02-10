@@ -46,6 +46,7 @@ jobs:
         with:
           branches: |
             [
+              "main",
               { "name": "develop", "prerelease": "beta" }
             ]
           extra_plugins: |
