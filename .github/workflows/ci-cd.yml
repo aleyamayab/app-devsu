@@ -44,11 +44,6 @@ jobs:
         id: semantic
         uses: cycjimmy/semantic-release-action@v4
         with:
-          branches: |
-            [
-              "main",
-              { "name": "develop", "prerelease": "beta" }
-            ]
           extra_plugins: |
             conventional-changelog-conventionalcommits
             @semantic-release/commit-analyzer
