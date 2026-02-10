@@ -8,7 +8,7 @@ from datetime import datetime
 
 class UserViewSet(viewsets.ModelViewSet):
     """
-    User List - Nuevo Ambiente Desarrollo
+    User List - Prueba Final DevOps - Ambiente Desarrollo
     
     Esta API es para gestionar usuarios en el ambiente de desarrollo.
     """
