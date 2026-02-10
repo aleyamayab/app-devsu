@@ -1,4 +1,4 @@
-name: CI Build & Deploy DEV (GitOps)
+name: CI Build & Deployment
 
 on:
   push:
