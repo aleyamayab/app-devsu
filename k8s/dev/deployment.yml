@@ -8,14 +8,21 @@ spec:
   selector:
     matchLabels:
       app: devsu-app
+
   template:
     metadata:
       labels:
         app: devsu-app
+      annotations:
+        azure.workload.identity/use: "true"
+
+
     spec:
+      # OBLIGATORIO para Workload Identity
+      serviceAccountName: devsu-sa
 
       # -----------------------------------
-      # Volumen CSI (Key Vault)
+      # Volumen CSI (Azure Key Vault)
       # -----------------------------------
       volumes:
         - name: secrets-store
@@ -26,20 +33,25 @@ spec:
               secretProviderClass: devsu-keyvault
 
       # -----------------------------------
-      # Init container: migrations
+      # Init container: Django migrations
       # -----------------------------------
       initContainers:
         - name: migrate
           image: ghcr.io/aleyamayab/devsu-demo-devops-python:1.0.0-beta.10
           imagePullPolicy: Always
+          
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
+
           command:
             - sh
             - -c
             - |
-              echo "Running migrations (initContainer)..." &&
+              echo "Running Django migrations..." &&
               python manage.py migrate --noinput
 
-          # Acceso a secretos (Key Vault → K8s Secret)
           envFrom:
             - configMapRef:
                 name: devsu-app-config
@@ -47,12 +59,6 @@ spec:
                 name: devsu-app-secret
             - secretRef:
                 name: postgres-secret
-
-          # Montar CSI (obligatorio)
-          volumeMounts:
-            - name: secrets-store
-              mountPath: /mnt/secrets
-              readOnly: true
 
       # -----------------------------------
       # Main container
@@ -66,7 +72,7 @@ spec:
             - sh
             - -c
             - |
-              echo "Starting Django..." &&
+              echo "Starting Django application..." &&
               python manage.py runserver 0.0.0.0:8000
 
           ports:
@@ -77,7 +83,6 @@ spec:
             runAsUser: 1000
             allowPrivilegeEscalation: false
 
-          # 🔐 Variables desde Key Vault (via Secret sync)
           envFrom:
             - configMapRef:
                 name: devsu-app-config
@@ -86,7 +91,6 @@ spec:
             - secretRef:
                 name: postgres-secret
 
-          # 🔑 Montar CSI también en el contenedor principal
           volumeMounts:
             - name: secrets-store
               mountPath: /mnt/secrets
