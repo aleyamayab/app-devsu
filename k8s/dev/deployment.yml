@@ -16,7 +16,7 @@ spec:
 
       initContainers:
         - name: migrate
-          image: ghcr.io/aleyamayab/devsu-demo-devops-python:1.0.0-beta.1
+          image: ghcr.io/aleyamayab/devsu-demo-devops-python:1.0.0-beta.7
           imagePullPolicy: Always
           command:
             - sh
@@ -34,7 +34,7 @@ spec:
 
       containers:
         - name: devsu-app
-          image: ghcr.io/aleyamayab/devsu-demo-devops-python:1.0.0-beta.1
+          image: ghcr.io/aleyamayab/devsu-demo-devops-python:1.0.0-beta.7
           imagePullPolicy: Always
           command:
             - sh
