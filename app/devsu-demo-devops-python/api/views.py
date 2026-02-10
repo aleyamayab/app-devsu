@@ -8,9 +8,9 @@ from datetime import datetime
 
 class UserViewSet(viewsets.ModelViewSet):
     """
-    User List - Prueba Final DevOps - Ambiente Desarrollo
+    User List - Prueba Final DevOps
     
-    Esta API es para gestionar usuarios en el ambiente de desarrollo.
+    Esta API es para gestionar usuarios..
     """
     serializer_class = UserSerializer
     queryset = User.objects.all()
