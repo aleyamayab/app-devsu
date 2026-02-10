@@ -2,7 +2,8 @@ name: CI Build & Deploy DEV (GitOps with PR)
 
 on:
   push:
-    branches: [develop]
+    branches:
+      - develop
 
 permissions:
   contents: write
@@ -31,8 +32,9 @@ jobs:
       # -------------------------------------------------
       # 2. Validation build (always)
       # -------------------------------------------------
-      - name: Docker build (validation)
+      - name: Docker build (validation only)
         run: |
+          echo "Validation build"
           docker build ${{ env.APP_DIR }}
 
       # -------------------------------------------------
@@ -59,7 +61,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # -------------------------------------------------
-      # 4. Login GHCR (ONLY if release exists)
+      # 4. Login to GHCR (only if release exists)
       # -------------------------------------------------
       - name: Login to GHCR
         if: steps.semantic.outputs.new_release_published == 'true'
@@ -91,7 +93,7 @@ jobs:
             k8s/dev/deployment.yml
 
       # -------------------------------------------------
-      # 7. Create GitOps PR
+      # 7. Create GitOps Pull Request
       # -------------------------------------------------
       - name: Create GitOps PR for DEV
         if: steps.semantic.outputs.new_release_published == 'true'
@@ -110,21 +112,22 @@ jobs:
             **Version:** `${{ steps.semantic.outputs.new_release_version }}`
             **Image:** `${{ env.IMAGE_NAME }}:${{ steps.semantic.outputs.new_release_version }}`
 
-            Changes:
+            ### Changes
             - Updated DEV deployment manifest
 
-            Generated automatically by CI.
+            This PR was generated automatically by CI.
           labels: |
             gitops
             deployment
 
       # -------------------------------------------------
-      # 8. Auto-merge GitOps PR (ADMIN)
+      # 8. Enable auto-merge (ADMIN TOKEN via GH_TOKEN)
       # -------------------------------------------------
       - name: Auto-merge GitOps PR
         if: steps.semantic.outputs.new_release_published == 'true'
         uses: peter-evans/enable-pull-request-automerge@v3
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
         with:
-          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
           pull-request-number: ${{ steps.cpr.outputs.pull-request-number }}
           merge-method: squash
